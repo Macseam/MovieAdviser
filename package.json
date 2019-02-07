@@ -1,0 +1,25 @@
+{
+  "name": "movieadviser",
+  "version": "1.0.0",
+  "description": "movie_adviser_backend",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Macseam",
+  "license": "GPL-3.0",
+  "private": true,
+  "homepage": "https://github.com/Macseam/MovieAdviser#readme",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Macseam/MovieAdviser"
+  },
+  "dependencies": {
+    "axios": "^0.18.0",
+    "express": "^4.16.4",
+    "lodash": "^4.17.11",
+    "pg-monitor": "^1.1.0",
+    "pg-promise": "^8.5.5",
+    "winston": "^3.1.0"
+  }
+}
