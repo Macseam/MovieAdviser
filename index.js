@@ -66,6 +66,8 @@ app.get('/', async function (req, res) {
     }
 });
 
+// example
+
 app.listen(3000, function () {
     console.log('App listening on port 3000');
 });
