@@ -66,8 +66,9 @@ app.get('/', async function (req, res) {
     }
 });
 
-// example
+const NODE_ENV = process.env.NODE_ENV || 'production';
+const port = NODE_ENV === 'production' ? 8080 : 3000;
 
-app.listen(3000, function () {
-    console.log('App listening on port 3000');
+app.listen(port, function () {
+    console.log(`App listening on port ${port}`);
 });
