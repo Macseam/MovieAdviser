@@ -6,8 +6,7 @@ const log = require('./log')(module);
 const config = require('./config')(module);
 const pgp = require("pg-promise")({
     query(e) {
-        console.log(' =======> Выполнен запрос:');
-        console.log(e.query);
+        console.log(` =======> Выполнен запрос в БД ${e.client.database} от пользователя ${e.client.user} (${Date.now()})`);
     }
 });
 const app = express();
@@ -21,7 +20,7 @@ app.use(function(req, res, next) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', async function (req, res) {
+app.get('/random', async function (req, res) {
     try {
         const dataToSend = await
             db.any(
@@ -47,26 +46,52 @@ app.get('/', async function (req, res) {
                 ORDER BY RANDOM() \
                 ASC LIMIT 3"
             )
-        const moviesInfo = dataToSend.map(async movieItem =>
-            axios.get(`https://api.themoviedb.org/3/find/${movieItem.tconst}?api_key=${config.tmdbKey}&external_source=imdb_id`))
-        Promise.all(moviesInfo).then((completed) => {
-            const placeholder = `http://${req.headers.host}/noimg.png`
-            const mutatedData = dataToSend
-            _.each(mutatedData, (dataItem, index) => {
-                const posterPath = _.get(completed[index], 'data.movie_results[0].poster_path', _.noop())
-                mutatedData[index].cover = posterPath
-                    ? `https://image.tmdb.org/t/p/w300${posterPath}`
-                    : placeholder
-            })
-            res.send(mutatedData)
-        })
+        res.send(dataToSend)
     } catch(err) {
-        console.log("ERROR:", error);
-        res.send(error);
+        console.log("ERROR:", err);
+        res.send(err);
     }
 });
 
-const NODE_ENV = process.env.NODE_ENV || 'production';
+app.get('/cover', async function (req, res) {
+    try {
+        const movieId = _.get(req, 'query.movie_id', null);
+        const placeholder = await axios({
+            method: 'get',
+            url: `http://${req.headers.host}/noimg.png`,
+            responseType: 'arraybuffer'
+        });
+        const returnPlaceholder = () => {
+            res.writeHead(200, {'Content-Type': 'image/jpeg'});
+            res.end(placeholder.data, 'binary');
+        }
+        if (!movieId) {
+            returnPlaceholder()
+            return;
+        }
+        const tmdbLink = await axios({
+            method: 'get',
+            url: `https://api.themoviedb.org/3/find/${movieId}?api_key=${config.tmdbKey}&external_source=imdb_id`,
+        })
+        const posterPath = _.get(tmdbLink, 'data.movie_results[0].poster_path', _.noop())
+        if (!posterPath) {
+            returnPlaceholder()
+            return;
+        }
+        const coverLink = await axios({
+            method: 'get',
+            url: `https://image.tmdb.org/t/p/w300${posterPath}`,
+            responseType: 'arraybuffer'
+        });
+        res.writeHead(200, {'Content-Type': 'image/jpeg'});
+        res.end(coverLink.data, 'binary');
+    } catch(err) {
+        console.log("ERROR:", err);
+        res.send(err);
+    }
+});
+
+const NODE_ENV = app.get('env') || 'production';
 const port = NODE_ENV === 'production' ? 8080 : 3000;
 
 app.listen(port, function () {
