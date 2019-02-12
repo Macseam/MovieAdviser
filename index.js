@@ -93,6 +93,7 @@ app.get('/cover', async function (req, res) {
 
 const NODE_ENV = app.get('env') || 'production';
 const port = NODE_ENV === 'production' ? 8080 : 3000;
+console.log(NODE_ENV)
 
 app.listen(port, function () {
     console.log(`App listening on port ${port}`);
