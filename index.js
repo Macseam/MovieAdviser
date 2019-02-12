@@ -91,7 +91,7 @@ app.get('/cover', async function (req, res) {
     }
 });
 
-const NODE_ENV = process.env.NODE_ENV || 'development';
+const NODE_ENV = process.env.NODE_ENV || app.get('env') || 'development';
 const port = NODE_ENV === 'production' ? 8080 : 3000;
 
 app.listen(port, function () {
