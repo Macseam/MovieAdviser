@@ -7,6 +7,7 @@ const config = require('./config')(module);
 const pgp = require("pg-promise")({
     query(e) {
         console.log(` =======> Выполнен запрос в БД ${e.client.database} от пользователя ${e.client.user} (${Date.now()})`);
+        console.log(e.query);
     }
 });
 const app = express();
@@ -21,10 +22,31 @@ app.use(function(req, res, next) {
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/random', async function (req, res) {
+    const genre = _.get(req, 'query.genre', _.noop());
+    const year = _.get(req, 'query.year', _.noop());
+    const rating = _.get(req, 'query.rating', _.noop());
+    let yearQuery = '> 0'
+    let ratingQuery = '> 0'
+    switch (year) {
+        case 'old':
+            yearQuery = '< 2017'
+            break
+        case 'new':
+            yearQuery = '> 2016'
+            break
+    }
+    switch (rating) {
+        case 'low':
+            ratingQuery = '< 6'
+            break
+        case 'high':
+            ratingQuery = '> 5'
+            break
+    }
     try {
         const dataToSend = await
             db.any(
-                "SELECT \
+                `SELECT \
                 title_basics.tconst,\
                 title_basics.primary_title,\
                 title_akas.title,\
@@ -40,16 +62,17 @@ app.get('/random', async function (req, res) {
                 ON \
                 (title_basics.tconst = title_ratings.tconst) \
                 WHERE \
-                CAST (title_ratings.average_rating AS FLOAT) > 5 AND \
-                CAST (title_basics.start_year AS INTEGER) > 2000 AND \
+                CAST (title_ratings.average_rating AS FLOAT) ${ratingQuery} AND \
+                ${genre ? "title_basics.genres LIKE '" + genre + "%' AND" : ""} \
+                CAST (title_basics.start_year AS INTEGER) ${yearQuery} AND \
                 title_akas.title IS NOT NULL \
                 ORDER BY RANDOM() \
-                ASC LIMIT 3"
+                ASC LIMIT 3`
             )
         res.send(dataToSend)
     } catch(err) {
         console.log("ERROR:", err);
-        res.send(err);
+        res.status(500).json({ error: 'Ошибка при выполнении запроса к БД' });
     }
 });
 
@@ -87,7 +110,7 @@ app.get('/cover', async function (req, res) {
         res.end(coverLink.data, 'binary');
     } catch(err) {
         console.log("ERROR:", err);
-        res.send(err);
+        res.status(500).json({ error: 'Ошибка при попытке получения ссылки на постер фильма' });
     }
 });
 
