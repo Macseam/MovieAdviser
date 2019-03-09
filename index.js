@@ -22,9 +22,18 @@ app.use(function(req, res, next) {
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/random', async function (req, res) {
-    const genre = _.get(req, 'query.genre', _.noop());
+    const genre = _.get(req, 'query.genre') || '';
     const year = _.get(req, 'query.year', _.noop());
     const rating = _.get(req, 'query.rating', _.noop());
+    const genresList = genre.split(',')
+    let genresQuery = ''
+    if (!_.isEmpty(genresList)) {
+        genresQuery = `title_basics.genres SIMILAR TO '(${genresList.join('|')})%' AND`
+    }
+    // Лучшее - детям
+    if (genre === 'Animation,Family') {
+        genresQuery = `title_basics.genres LIKE '%Animation%' AND title_basics.genres LIKE '%Family%' AND`
+    }
     let yearQuery = '> 0'
     let ratingQuery = '> 0'
     switch (year) {
@@ -34,6 +43,8 @@ app.get('/random', async function (req, res) {
         case 'new':
             yearQuery = '> 2016'
             break
+        default:
+            yearQuery = `> ${year}`
     }
     switch (rating) {
         case 'low':
@@ -41,6 +52,12 @@ app.get('/random', async function (req, res) {
             break
         case 'high':
             ratingQuery = '> 5'
+            break
+        case 'all':
+            ratingQuery = '> 0'
+            break
+        default:
+            ratingQuery = `> ${rating}`
             break
     }
     try {
@@ -50,6 +67,8 @@ app.get('/random', async function (req, res) {
                 title_basics.tconst,\
                 title_basics.primary_title,\
                 title_akas.title,\
+                title_akas.types,\
+                title_akas.attributes,\
                 title_basics.start_year,\
                 title_basics.runtime_minutes,\
                 title_basics.genres, \
@@ -63,7 +82,7 @@ app.get('/random', async function (req, res) {
                 (title_basics.tconst = title_ratings.tconst) \
                 WHERE \
                 CAST (title_ratings.average_rating AS FLOAT) ${ratingQuery} AND \
-                ${genre ? "title_basics.genres LIKE '" + genre + "%' AND" : ""} \
+                ${genresQuery} \
                 CAST (title_basics.start_year AS INTEGER) ${yearQuery} AND \
                 title_akas.title IS NOT NULL \
                 ORDER BY RANDOM() \
