@@ -1,14 +1,15 @@
 const express = require('express');
 const axios = require('axios');
 const _ = require('lodash');
+const moment = require('moment');
 let path = require('path');
 const log = require('./log')(module);
 const config = require('./config')(module);
 const pgp = require("pg-promise")({
-    query(e) {
-        console.log(` =======> Выполнен запрос в БД ${e.client.database} от пользователя ${e.client.user} (${Date.now()})`);
-        console.log(e.query);
-    }
+    // query(e) {
+    //     console.log(` =======> Выполнен запрос в БД ${e.client.database} от пользователя ${e.client.user} (${Date.now()})`);
+    //     console.log(e.query);
+    // }
 });
 const app = express();
 const db = pgp(config.dbLink);
@@ -26,6 +27,7 @@ app.get('/random', async function (req, res) {
     const year = _.get(req, 'query.year', _.noop());
     const rating = _.get(req, 'query.rating', _.noop());
     const genresList = genre.split(',')
+    const currentYear = moment().format('YYYY')
     let genresQuery = ''
     if (!_.isEmpty(genresList)) {
         genresQuery = `title_basics.genres SIMILAR TO '(${genresList.join('|')})%' AND`
@@ -36,28 +38,35 @@ app.get('/random', async function (req, res) {
     }
     let yearQuery = '> 0'
     let ratingQuery = '> 0'
+    let votesQuery = '> 0'
     switch (year) {
         case 'old':
-            yearQuery = '< 2017'
+            yearQuery = '< ' + (currentYear - 1)
             break
         case 'new':
-            yearQuery = '> 2016'
+            yearQuery = '> ' + (currentYear - 2)
+            break
+        case 'all':
+            yearQuery = '> 1000'
             break
         default:
-            yearQuery = `> ${year}`
+            // yearQuery = `> ${year}`
+            break
     }
     switch (rating) {
         case 'low':
-            ratingQuery = '< 6'
+            ratingQuery = '> 7'
+            votesQuery = '< 50001'
             break
         case 'high':
-            ratingQuery = '> 5'
+            ratingQuery = '> 6'
+            votesQuery = '> 50000'
             break
         case 'all':
             ratingQuery = '> 0'
             break
         default:
-            ratingQuery = `> ${rating}`
+            // ratingQuery = `> ${rating}`
             break
     }
     try {
@@ -72,7 +81,8 @@ app.get('/random', async function (req, res) {
                 title_basics.start_year,\
                 title_basics.runtime_minutes,\
                 title_basics.genres, \
-                title_ratings.average_rating \
+                title_ratings.average_rating, \
+                title_ratings.num_votes \
                 FROM title_basics \
                 LEFT JOIN title_akas \
                 ON \
@@ -82,6 +92,7 @@ app.get('/random', async function (req, res) {
                 (title_basics.tconst = title_ratings.tconst) \
                 WHERE \
                 CAST (title_ratings.average_rating AS FLOAT) ${ratingQuery} AND \
+                CAST (title_ratings.num_votes AS INTEGER) ${votesQuery} AND \
                 ${genresQuery} \
                 CAST (title_basics.start_year AS INTEGER) ${yearQuery} AND \
                 title_akas.title IS NOT NULL \
@@ -115,7 +126,9 @@ app.get('/cover', async function (req, res) {
             method: 'get',
             url: `https://api.themoviedb.org/3/find/${movieId}?api_key=${config.tmdbKey}&external_source=imdb_id`,
         })
-        const posterPath = _.get(tmdbLink, 'data.movie_results[0].poster_path', _.noop())
+        const posterIfMovie = _.get(tmdbLink, 'data.movie_results[0].poster_path', _.noop())
+        const posterIfSeries = _.get(tmdbLink, 'data.tv_results[0].poster_path', _.noop())
+        const posterPath = posterIfMovie || posterIfSeries
         if (!posterPath) {
             returnPlaceholder()
             return;

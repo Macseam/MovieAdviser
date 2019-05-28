@@ -18,6 +18,7 @@
     "axios": "^0.18.0",
     "express": "^4.16.4",
     "lodash": "^4.17.11",
+    "moment": "^2.24.0",
     "pg-monitor": "^1.1.0",
     "pg-promise": "^8.5.5",
     "winston": "^3.1.0"
