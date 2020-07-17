@@ -17,7 +17,7 @@
   "dependencies": {
     "axios": "^0.18.1",
     "express": "^4.16.4",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "moment": "^2.24.0",
     "pg-monitor": "^1.2.0",
     "pg-promise": "^9.0.0",
